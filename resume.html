@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+
+<html data-x-vm="resume">
+	<head>
+		<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+
+		<title>{{name}}</title>
+		<script type="text/javascript" id="XBind">
+			(function(global){global.XBind=global.XBind||{};global.XBind.processor=global.XBind.processor||{};global.XBind.processor.value=function(vm,DOM_object,bind_to){vm.newTrackable(bind_to);vm[bind_to]=DOM_object.value;vm.addObserver(bind_to,function(){if(DOM_object.value!=vm[bind_to])DOM_object.value=vm[bind_to]});if(DOM_object.addEventListener)DOM_object.addEventListener("change",function(e){onchange(e.target)});else DOM_object.attachEvent("onchange",function(){var e=window.event;onchange(e.srcElement)});function onchange(target){if(target!=DOM_object)return;if(DOM_object.value!=vm[bind_to])vm[bind_to]=DOM_object.value}return false}})(window);(function(global){global.XBind=global.XBind||{};global.XBind.processor=global.XBind.processor||{};VMList.prototype={size:function(){return this.vm_bind_list.length},add:function(pos){var vm_bind=this._newVM(pos);var DOM_list=vm_bind.DOM_list;for(var i=0;i<DOM_list.length;i++){var ref=pos>=this.size()?null:this.vm_bind_list[pos].DOM_list[0];this.root.insertBefore(DOM_list[i],ref)}this.vm_bind_list.splice(pos,0,vm_bind);return vm_bind.vm},push:function(){return this.add(this.size())},unshift:function(){return this.add(0)},remove:function(pos){var DOM_list=this.vm_bind_list.splice(pos,1)[0].DOM_list;for(var i=0;i<DOM_list.length;i++)this.root.removeChild(DOM_list[i])},clear:function(){while(this.size())this.pop()},shift:function(){this.remove(0)},pop:function(){this.remove(this.size()-1)},get:function(pos){return this.vm_bind_list[pos]},apply:function(pos,array){if(typeof array=="undefined"){array=pos;pos=this.size()}for(var i=0;i<array.length;i++){var vm=this.add(pos+i);for(k in array[i]){var v=array[i][k];if(v instanceof Array)vm[k].apply(v);else vm[k]=v}}},_newVM:function(){var vm_bind={};vm_bind.vm=new global.XBind.BindObject;vm_bind.DOM_list=[];for(var i=0;i<this.template.length;i++){var node;vm_bind.DOM_list.push(node=this.template[i].cloneNode(true));global.XBind.bindDOM(vm_bind.vm,node)}return vm_bind}};function VMList(root,template,parent_vm){this.root=root;this.template=template;this.vm_bind_list=[];this.parent_vm=parent_vm}global.XBind.processor.list=function(vm,DOM_object,bind_to){var template=[];var childNodes=DOM_object.childNodes;for(var i=childNodes.length-1;i>=0;i--)template.push(DOM_object.removeChild(childNodes[i]));if(typeof vm[bind_to]!="undefined")throw"VM property collision: "+bind_to;vm[bind_to]=new VMList(DOM_object,template.reverse(),vm);return true}})(window);(function(global){global.XBind=global.XBind||{};global.XBind.processor=global.XBind.processor||{};global.XBind.processor.html=function(vm,DOM_object,bind_to){vm.newTrackable(bind_to);vm[bind_to]=DOM_object.value;vm.addObserver(bind_to,function(){DOM_object.innerHTML=vm[bind_to]});return true}})(window);(function(global){global.XBind=global.XBind||{};global.XBind.processor=global.XBind.processor||{};global.XBind.processor.event=function(vm,DOM_object,type,action){if(DOM_object.addEventListener)DOM_object.addEventListener(type,function(e){onevent.call(this,e)});else DOM_object.attachEvent("on"+type,function(){var e=window.event;e.target=e.srcElement;onevent.call(this,e)});function onevent(e){vm[action].call(this,e)}return false}})(window);(function(global){global.XBind=global.XBind||{};var CHAR_IDSC=0;var CHAR_IDC=1;var CHAR_QUOTE=2;var CHAR_DQUOTE=3;var CHAR_SLASH=4;var CHAR_ILL=5;var CHAR_OTHER=6;var STATE_INIT=0;var STATE_ERR=1;var STATE_ID=2;var STATE_STR_QUOTE=3;var STATE_STR_DQUOTE=4;var STATE_SLASH_QUOTE=5;var STATE_SLASH_DQUOTE=6;var STATE_TRANSFER=[[2,0,3,4,0,1,0],[1,1,1,1,1,1,1],[2,2,3,4,0,1,0],[3,3,0,3,5,3,3],[4,4,4,0,6,4,4],[3,3,3,3,3,3,3],[4,4,4,4,4,4,4]];var EXP_findExp=/{{(.*?)}}/g;global.XBind.bindString=function(vm,string,fn){var bind_count=0;EXP_findExp.lastIndex=0;while((exp=EXP_findExp.exec(string))!=null)bind_count+=global.XBind.bindExp(vm,exp[1],fn);return bind_count};global.XBind.evalString=function(vm,string){return string.replace(EXP_findExp,function(unused,exp){return global.XBind.evalExp(vm,exp)})};global.XBind.bindExp=function(vm,exp,fn){var exp_ids=global.XBind.parseExp(exp);for(var i=0;i<exp_ids.length;i++){var id=exp_ids[i];vm.newTrackable(id);vm.addObserver(id,fn)}return exp_ids.length};global.XBind.evalExp=function(vm,exp){var exp_ids=global.XBind.parseExp(exp);var vars={};for(var i=0;i<exp_ids.length;i++){var id=exp_ids[i];if(!vm.hasTrackable(id))throw"VM property not found: "+id;vars[id]=vm[id]}with(vars){try{return eval(exp)}catch(e){return"Expression error"}}};global.XBind.parseExp=function(exp){var ids=[];var ids_set={};var state=STATE_INIT;var id="";for(var i=0;i<exp.length;i++){var char=exp.substr(i,1);var char_type=determinCharacter(char);var state=STATE_TRANSFER[state][char_type];if(state==STATE_ERR)throw"ill expression: "+exp;if(state==STATE_ID)id+=char;else if(id.length){if(!ids_set[id]){ids.push(id);ids_set[id]=true}id=""}}if(id.length&&!ids_set[id])ids.push(id);return ids};var EXP_idsc=/[_\$A-Za-z]/;var EXP_idc=/[_\$A-Za-z0-9]/;var EXP_ill=/[\.\[]/;function determinCharacter(char){if(EXP_idsc.test(char))return CHAR_IDSC;if(EXP_idc.test(char))return CHAR_IDC;if(EXP_ill.test(char))return CHAR_ILL;if(char=="'")return CHAR_QUOTE;if(char=='"')return CHAR_DQUOTE;if(char=="\\")return CHAR_SLASH;return CHAR_OTHER}})(window);(function(global,document){global.XBind=global.XBind||{};var compatible_mode=!testNormalMode();global.XBind.BindObject=function(){var prop_map={};var me=this;if(compatible_mode){me=document.createElement("div");me.setAttribute("style","display:none");document.body.appendChild(me);me.attachEvent("onpropertychange",function(){var e=window.event;var prop=e.propertyName;var tracker=prop_map[prop];if(!tracker)return;tracker.set(me[prop])})}me.newTrackable=function(prop){if(prop_map[prop])return;if(typeof me[prop]!="undefined")throw"BindObject property collision: "+prop;var tracker=new Tracker;if(compatible_mode)me[prop]=null;else{tracker.configurable=true;tracker.enumerable=true;Object.defineProperty(me,prop,tracker)}prop_map[prop]=tracker};me.hasTrackable=function(prop){return!!prop_map[prop]};me.addObserver=function(prop,fn){prop_map[prop].addObserver(fn)};return me};function Tracker(){var value=null;var observers=[];this.get=function(){return value};this.set=function(v){if(v&&typeof v=="object")throw"Illegal BindObject property type: "+typeof v;value=v;for(var key in observers)observers[key](v)};this.addObserver=function(observer){observers.push(observer)}}function testNormalMode(){if(!Object.defineProperty)return false;try{Object.defineProperty({},"_",{set:function(){},get:function(){}})}catch(e){return false}return true}})(window,document);(function(global,document){global.XBind=global.XBind||{};global.XBind.processor=global.XBind.processor||{};var VM_bind_map=null;global.XBind.getVM=function(name){if(!VM_bind_map)prepareVMMap();var vm_bind=VM_bind_map[name];if(!vm_bind)return null;if(!vm_bind.vm)prepareVM(vm_bind);return vm_bind.vm};global.XBind.bindDOM=bindDOMRecur;function prepareVMMap(){VM_bind_map={};prepareVMMapRecur(document.documentElement)}function prepareVMMapRecur(elem){var vm_attr=elem.getAttribute&&elem.getAttribute("data-x-vm");if(vm_attr){VM_bind_map[vm_attr]={DOM:elem,vm:null};return}var childNodes=elem.childNodes;for(var i=0;i<childNodes.length;i++)prepareVMMapRecur(childNodes[i])}function prepareVM(vm_bind){vm_bind.vm=new global.XBind.BindObject;bindDOMRecur(vm_bind.vm,vm_bind.DOM)}function bindDOMRecur(vm,DOM_object){if(DOM_object.nodeType==3){bindTextNode(vm,DOM_object);return}if(DOM_object.nodeName.toLowerCase()=="script")return;if(executeProcessors(vm,DOM_object,DOM_object.getAttribute("data-x-bind")))return;var attrs=DOM_object.attributes;for(var i=0;i<attrs.length;i++)bindAttribute(vm,DOM_object,attrs[i].name);var childNodes=DOM_object.childNodes;for(var i=0;i<childNodes.length;i++)bindDOMRecur(vm,childNodes[i]);return 0}function bindTextNode(vm,text_node){var pattern=text_node.nodeValue;var bind_count=global.XBind.bindString(vm,pattern,function(){text_node.nodeValue=global.XBind.evalString(vm,pattern)});if(bind_count)text_node.nodeValue=global.XBind.evalString(vm,pattern)}function bindAttribute(vm,DOM_object,attr){var pattern=DOM_object.getAttribute(attr);if(typeof pattern!="string")return;var bind_count=global.XBind.bindString(vm,pattern,function(){var evalued=global.XBind.evalString(vm,pattern);if(DOM_object.nodeName.toLowerCase()=="a"&&attr.toLowerCase()=="href"){var temp=[],len=0;while(len=DOM_object.childNodes.length)temp.push(DOM_object.removeChild(DOM_object.childNodes[len-1]));len=temp.length;DOM_object.setAttribute(attr,evalued);for(var i=len-1;i>=0;i--)DOM_object.appendChild(temp[i])}else DOM_object.setAttribute(attr,evalued)});if(bind_count)DOM_object.setAttribute(attr,global.XBind.evalString(vm,pattern))}function executeProcessors(vm,DOM_object,processor_str){if(!processor_str)return;var processors=processor_str.split(";");var children_processed=false;for(var i=0;i<processors.length;i++){var name_param=processors[i].split(":");var name=trim(name_param[0]);var params=name_param[1].split(",");for(var i=0;i<params.length;i++)params[i]=trim(params[i]);if(global.XBind.processor[name])children_processed|=global.XBind.processor[name].apply(global,[vm,DOM_object].concat(params))}return children_processed}var EXP_space=/(^\s*)|(\s*$)/g;function trim(str){return str.replace(EXP_space,"")}})(window,document);
+		</script>
+		<style type="text/css">
+			#photo {
+				background-image: url(data:image/jpg;base64,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);
+			}
+			body {
+				background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyBpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBXaW5kb3dzIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjhDNzAyRDA1NTMyQTExRTJCRUJGOUU3NTUxOTMyNTczIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjhDNzAyRDA2NTMyQTExRTJCRUJGOUU3NTUxOTMyNTczIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6OEM3MDJEMDM1MzJBMTFFMkJFQkY5RTc1NTE5MzI1NzMiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6OEM3MDJEMDQ1MzJBMTFFMkJFQkY5RTc1NTE5MzI1NzMiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz5V13QmAAAAJ1BMVEX4+Pjz8/P29vb9/f3v7+/y8vL19fXx8fHw8PD8/Pz5+fn6+vr7+/v7eERdAAADM0lEQVR42oyVB3IDUQhDgU/bcv/z5ml9gWQmju2lCEkQc+s56VGX26bF+tiE+YluO7PmU37ceJ85z3b0McuxtfQ3I+cac78yq5Q21kR7Wlv4u1txNrMpZ3PHRJBzoooqk6dob1XOV+n2ejU1bOx4et9uBzhptn5tUdwj4lh3nTaPq5vEpe+zeQuRTSVThPHT9jhvnnLKUJTE9DL9HQOExc3ofrLo1OQdZishKgbgcRJlfvkqxYk0K7tN5ZzO10IUYxMMPPqd0CNRCJ90t137cL5hVM98XNM6ZHXCIkQztiZaMB49oAQPIh+VCitXu+BTqmfMY0OQ90JARBYAGPEFXB4rCQnsK4F8EAPJYoPGRkK+qHLDS9zO8DQJcpKJkbyeYRiyNR1RPG819h9tTMTX+0Q7Q5hk4RlRMJrvDn5h2Di1Kiy+EC0fSkALUJF2ZRlYwQWICEeo2eElL2l28bBnfzZbwwYJ+kIKktAdtQnYM1IK1Udu8BVT2Iz+/rR9ypDDFNRKGge1kyI0RQ+PO3viJRInQyXModskNENmAZziGLoGDYHPy/oLxD2oYTLHYKHOWczJF3gt0Hj7sh+BFS9DRIW627VQ8EYxIlbNgyPyWZH6CY0QQ/C1n7W1fagm5eJjke2Rs2T8sKtkVosGGaARks1C87zcK89HX0XNrYFYtvZS+Ma99D/EDCaFOV9vIBeqChWClVaa1bi+9YpVIvYSx83Iqk+UsY/oz9zx2TZf+PbzQW6VYFIo6/s7KGH7WI3DZcyNQdAPTNSseSiQ0yMr3LYaNabhEkDa1idw452sIx8PRTDRkFJSUscpdHr2uwWRiIcozolpBBlqvjBGEdJe+OegOHJCr2hEHIYZLT/HhpUHE/Kklhf9c0a3goOx2qVQ7QtLoIouh07cBZ6hwmrN5ThAsYjIoTPJfbNvTiS4+d3fIvpOXpJVn1SOlH7hgn0KF7qAtIp4GktNysNaX7agY1GUBROB4BhoWVh45TiIOd/hE2iXogGrvHDPkwuMxXSE8GoWUYU6OBxM8nZMaQH81lG6gKBJHk5CE6RF1rfNTgdc3soGLCXGdBr9Kt2Lf/77+BNgAGuDFsad2mMDAAAAAElFTkSuQmCC);
+			}
+		</style>
+		<style type="text/css">
+			body {
+				margin: 0; padding: 0;
+
+				color: #111;
+				font-family: Arial, "Microsoft YaHei", SimSun, sans-serif;
+				font-size: 15px;
+				line-height: 1.5em;
+				text-shadow: 0 1px 3px rgba(0,0,0,.5);
+			}
+			a, a:hover {
+				color: inherit;
+				text-decoration: none;
+			}
+			a:hover {
+				text-decoration: underline;
+			}
+
+			#language-switch {
+				position: fixed;
+				width: 100%;
+				z-index: 16;
+
+				padding: 10px 0;
+
+				color: #FFF;
+
+				text-align: right;
+			}
+			#language-switch a {
+				margin: 0 20px;
+			}
+
+			#info {
+				position: fixed;
+				width: 100%;
+				z-index: 8;
+
+				padding: 40px 0;
+
+				color: #FFF;
+				background-color: #00B5AD;
+				opacity: 0.95;
+
+				text-align: center;
+			}
+
+			#info .name,
+			#info .contact,
+			#info .photo {
+				font-size: 50px;
+				line-height: 1.2em;
+
+				display: inline-block;
+				margin: 0 15px;
+			}
+
+			#info .contact {
+				color: #E5E5E5;
+				font-size: 20px;
+			}
+
+			#info .photo {
+				width: 80px;
+				height: 80px;
+
+				vertical-align: middle;
+				
+				-webkit-border-radius: 40px;
+				-moz-border-radius: 40px;
+				border-radius: 40px;
+			}
+
+			#details {
+				padding-top: 180px;
+			}
+
+			.radius {
+				-webkit-border-radius: .325em;
+				-moz-border-radius: .325em;
+				border-radius: .325em;
+			}
+
+			.static-width {
+				width: 800px;
+				margin: 0px auto;
+			}
+
+			.block
+			{
+				padding: 10px;
+				margin-top:20px;
+				margin-bottom: 20px;
+
+				background-color: rgb(221,221,221);
+				-webkit-box-shadow: 0 3px 10px rgba(0,0,0,.3);
+				-moz-box-shadow: 0 3px 10px rgba(0,0,0,.3);
+				box-shadow: 0 3px 10px rgba(0,0,0,.3);
+
+				min-height: 100px;
+			}
+
+			.block .title
+			{
+				margin-top: 10px;
+
+				color: #FFF;
+				font-size: 20px;
+
+				-webkit-border-radius:0 5px 5px 0;
+				-moz-border-radius:0 5px 5px 0;
+				border-radius:0 5px 5px 0;
+
+				-webkit-box-shadow:0 1px 5px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -1px 0 rgba(0,0,0,.3);
+				-moz-box-shadow:0 1px 5px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -1px 0 rgba(0,0,0,.3);
+				box-shadow:0 1px 5px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.2),inset 0 -1px 0 rgba(0,0,0,.3);
+
+				background-color:#0389aa;
+				background-image:url(data:image/svg+xml;
+				base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgdmlld0JveD0iMCAwIDEgMSIgcHJlc2VydmVBc3BlY3RSYXRpbz0ibm9uZSI+CiAgPGxpbmVhckdyYWRpZW50IGlkPSJncmFkLXVjZ2ctZ2VuZXJhdGVkIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzAzODlhYSIgc3RvcC1vcGFjaXR5PSIxIi8+CiAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMwMDYxN2YiIHN0b3Atb3BhY2l0eT0iMSIvPgogIDwvbGluZWFyR3JhZGllbnQ+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
+				background-image:-webkit-gradient(linear,left top,left bottom,from(#0389aa),to(#00617f));
+				background-image:-webkit-linear-gradient(top,#0389aa 0%,#00617f 100%);
+				background-image:-moz-linear-gradient(top,#0389aa 0%,#00617f 100%);
+				background-image:-o-linear-gradient(top,#0389aa 0%,#00617f 100%);
+				background-image:linear-gradient(to bottom,#0389aa 0%,#00617f 100%);
+				filter:progid:DXImageTransform.Microsoft.gradient( startColorstr='#0389aa',endColorstr='#00617f',GradientType=0 );
+
+				margin-left:-20px;
+
+				position: relative;
+
+				height: 33px;
+
+			}
+
+			.block.darken .title
+			{
+				background-color: #cd9239;
+				background-image: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJod…EiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
+				background-image: -webkit-gradient(linear, left top, left bottom, from(rgba(205,146,57,1)), to(rgba(162,117,40,1)));
+				background-image: -webkit-linear-gradient(top, rgba(205,146,57,1) 0%, rgba(162,117,40,1) 100%);
+				background-image: -moz-linear-gradient(top, rgba(205,146,57,1) 0%, rgba(162,117,40,1) 100%);
+				background-image: -o-linear-gradient(top, rgba(205,146,57,1) 0%, rgba(162,117,40,1) 100%);
+				background-image: linear-gradient(to bottom, rgba(205,146,57,1) 0%,rgba(162,117,40,1) 100%);
+				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#cd9239', endColorstr='#a27528',GradientType=0 );
+			}
+
+			.block.bright .title
+			{
+				background-color: #9e2812;
+				background-image: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiA/Pgo8c3ZnIHhtbG5zPSJod…EiIGhlaWdodD0iMSIgZmlsbD0idXJsKCNncmFkLXVjZ2ctZ2VuZXJhdGVkKSIgLz4KPC9zdmc+);
+				background-image: -webkit-gradient(linear, left top, left bottom, from(#9e2812), to(#6f0d0d));
+				background-image: -webkit-linear-gradient(top, #9e2812 0%, #6f0d0d 100%);
+				background-image: -moz-linear-gradient(top, #9e2812 0%, #6f0d0d 100%);
+				background-image: -o-linear-gradient(top, #9e2812 0%, #6f0d0d 100%);
+				background-image: linear-gradient(to bottom, #9e2812 0%,#6f0d0d 100%);
+				filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#9e2812', endColorstr='#6f0d0d',GradientType=0 );
+			}
+
+
+
+			.block .title:before 
+			{
+				content: "";
+				position: absolute;
+				top: -10px;
+				left: 0;
+				border-color: transparent #00617f #00617f transparent;
+				border-style: solid;
+				border-width: 5px;
+				width: 0;
+				height: 0;
+			}
+
+			.block.darken .title:before  
+			{
+				border-color: transparent #664719 #664719 transparent;
+			}
+
+			.block.bright .title:before  
+			{
+				border-color: transparent #6f0d0d #6f0d0d transparent;
+			}
+
+			.block .title h5, .block .title p 
+			{
+				line-height: 1.5em;
+				margin: 0;
+			}
+
+			.block .title p 
+			{
+				font-weight: normal;
+				font-size: 15px;
+				padding: 0 32px;
+				color: rgb(221,221,221);
+			}
+
+			.block .title h5
+			{
+				font-weight: bold;
+				padding: 5px 25px;
+
+			}
+
+			.block .subtitle
+			{
+				margin: 1em 0;
+				text-shadow: rgba(0, 0, 0, 0.498039) 0px 1px 3px;
+				font-size: 28px;
+				line-height: 28	px;
+				color: #444;
+			}
+
+			.block .content
+			{
+				text-shadow:none;
+				padding: 10px 10px; 
+				color: #000;
+			}
+
+			.block .content a {
+				color: #369;
+			}
+
+			span.field {
+				margin-right: 25px;
+			}
+
+			div.para, p {
+				margin: 10px 0;
+			}
+
+		</style>
+	</head>
+
+	<body>
+		<div id="language-switch"><a href="#nogo" data-x-bind="event:click,applyChinese">中文版</a>|<a href="#nogo" data-x-bind="event:click,applyEnglish">ENGLISH</a></div>
+		<div id="info">
+			<div class="name">{{name}}</div>
+			<div class="contact">{{TEL}}{{tel_number}}</div>
+			<div class="contact">{{EMAIL}}<a id="s" href="mailto:{{email_address}}">{{email_address}}</a></div>
+			<div class="photo" id="photo"></div>
+		</div>
+
+		<div id="details">
+			<div class="block static-width radius">
+				<div id="intro_title" class="title">
+					<h5>{{INTRO}}</h5>
+				</div>
+				<div class="content">
+					<div class="para">{{intro}}</div>
+				</div>
+			</div>
+
+			<div class="block static-width radius">
+				<div id="edu-title" class="title">
+					<h5>{{EDUCATION}}</h5>
+				</div>
+				<div data-x-bind="list:education" class="content">
+					<div class="para">
+						<b><span class="field">{{duration}}</span><span class="field">{{major}}</span><span class="field">{{school}}</span><span class="field">{{degree}}</span></b>
+						<div data-x-bind="html:intro"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="block static-width radius">
+				<div id="intern-title" class="title">
+					<h5>{{INTERNSHIP}}</h5>
+				</div>
+				<div data-x-bind="list:internship" class="content">
+					<div class="para">
+						<b><span class="field">{{duration}}</span><span class="field">{{position}}</span><span class="field">{{company}}</span></b>
+						<div data-x-bind="html:intro"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="block static-width radius">
+				<div class="title">
+					<h5>{{PROJECTS}}</h5>
+				</div>
+				<div data-x-bind="list:projects" class="content">
+					<div class="para">
+						<b><span class="field">{{duration}}</span><span class="field">{{name}}</span><span class="field">{{project_role}}</span></b>
+						<div data-x-bind="html:intro"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="block static-width radius">
+				<div class="title">
+					<h5>{{SKILLS}}</h5>
+				</div>
+				<div class="content" data-x-bind="list:skills">
+					<div>
+						<b>{{name}}</b>{{intro}}
+					</div>
+				</div>
+			</div>
+
+			<div class="block static-width radius">
+				<div class="title">
+					<h5>{{HONORS}}</h5>
+				</div>
+				<div class="content">
+					<div class="para">
+						<b>{{DURING_BS}}</b>
+						<div data-x-bind="html:honor_bs"></div>
+					</div>
+					<div class="para">
+						<b>{{DURING_MS}}</b>
+						<div data-x-bind="html:honor_ms"></div>
+					</div>
+				</div>
+			</div>
+
+		</div>
+
+		
+
+	</body>
+
+
+
+	<script type="text/javascript">
+		window.onload = function() {
+
+			
+			var language_cn = {
+				name : '焦晓冬',
+				TEL : '手机：',
+				EMAIL : '邮箱：',
+				tel_number : '13161073143',
+				email_address : 'lfjxd@163.com',
+				INTRO : '自我评价',
+				intro : '一个对计算机技术和软件技术有极致热爱的人，渴望不断学习和创造。 我需要的不是一份工作，我需要的是一个平台，在那里，创造性劳动可以和业务需求劳动一样，得到高度的评价和认可，创造性技术成果可以得到应用以改善研发者的生活质量 ：） 。',
+				
+				EDUCATION : '教育背景',
+				education : [{
+					duration : '2012-9 至 2015-6',
+					major : '计算机科学与技术',
+					school : '北京邮电大学',
+					degree : '工学硕士',
+					intro : '主要科研工作为GUI系统；开发维护多个开源项目，其中XUILib (Direct UI 框架，<a href="http://xuilib.net">http://xuilib.net</a>)下载量2000+(79% China)。'
+				},{
+					duration : '2008-9 至 2012-6',
+					major : '软件工程',
+					school : '河北师范大学',
+					degree : '工学学士',
+					intro : '专业课成绩排名前1%，保送北京邮电大学公费攻读工学硕士学位；负责多个项目的研发，其中Cute Net平台和热点系统（<a href="https://who.edu2act.org">https://who.edu2act.org</a>）成为学院内使用最多的平台和应用之一。'
+				}],
+
+				INTERNSHIP : '实习经历',
+				internship : [{
+					duration : '2011-3 至 2012-4',
+					position : '研发工程师',
+					company : '北京奇虎360科技有限公司',
+					intro : '参与 360软件管家，360安全桌面 等多个互联网客户端项目的开发，详请见下面的项目经历。'
+				}],
+
+				PROJECTS : '项目经历',
+				projects : [{
+					duration : '2012-9 至 今',
+					name : '开源项目 XUI',
+					project_role : 'OWNER',
+					intro : 'Direct UI 框架，下载量2000+(79% China); <a href="http://xuilib.net">http://xuilib.net</a>'
+				},
+				{
+					duration : '2014-1 至 今',
+					name : '开源项目 WDUI',
+					project_role : 'OWNER',
+					intro : '基于HTML5 Canvas的Direct UI 框架; <a href="http://jxdabc.github.io/WDUI/test.html">http://jxdabc.github.io/WDUI/test.html</a>'
+				},{
+					duration : '2014-1 至 今',
+					name : ' 开源项目 class.js',
+					project_role : 'OWNER',
+					intro : 'Javascript OOP library; <a href="http://classjs.org">http://classjs.org</a>'
+				},{
+					duration : '2012-8 至 2014-9 ',
+					name : '研究生期间其它项目',
+					project_role : '',
+					intro : 'WEB MVC框架一套（<a href="https://github.com/jxdabc/XFramework">https://github.com/jxdabc/XFramework</a>， 自己做项目用）；<br />' +
+						'Android 界面库一套，WEB RPC框架一套（实验室用）；<br />' + 
+						'WEB换肤框架一套（<a href="https://github.com/jxdabc/XUIWeb">https://github.com/jxdabc/XUIWeb</a>，实验室用）；<br />' +
+						'CSS3 玩具一个（<a href="http://jxdabc.github.io/css3/album/">http://jxdabc.github.io/css3/album/</a>，哄女朋友用）。'
+				},{
+					duration : '2011-10 至 2012-4',
+					name : '360软件管家',
+					project_role : '研发工程师',
+					intro : '应用宝库模块（1人）；<br />软件小助手（2人攻坚组）。'
+				},{
+					duration : '2011-11 至 2011-12',
+					name : '360手机助手',
+					project_role : '研发工程师',
+					intro : '看照片和电子书模块UI（1人）。'
+				},{
+					duration : '2008-10 至 2011-3',
+					name : '360安全桌面',
+					project_role : '研发工程师',
+					intro : 'Web App 模块，维护和新功能开发（1人）；<br />' + 
+						'数据网络化（2人）。'
+				},{
+					duration : '2012-9 至 今',
+					name : 'Cute Net 平台以及基于此平台的几个应用',
+					project_role : 'OWNER',
+					intro : 
+						'<p>' +  
+							'简介：<br />' +
+							'“Cute Net Platform”实时从管理范围内的非终端网络设备获取网络信息，并整合企业的用户信息数据库（目前只针对Mircosoft Active Directory），为企业内部的应用提供实时的网络和用户信息。<br />' + 
+						'</p>' + 
+						'<p>' +  
+							'目前在此平台上开发的应用有：<br />' + 
+							'－虚拟数字学院系统（提供定位在线用户、查找自习室空位、教师上课点名、查看直播教学、查看教学安排、家长查看学生在校网络记录、家长邮件留言、短信查询和信息反馈等功能）<br />' + 
+							'－统一网络接入管理系统（基于MAC对网络接入实施授权和验证） <br />' +
+							'－单点登录系统（实现一次登录，访问企业内部所有应用，包括邮箱、办公系统等） <br />' +
+							'－教务信息管理系统 <br />' +
+						'</p>' +
+						'<p>' +  
+							'其中“虚拟数字学院系统”、“统一网络接入管理系统”已经在河北师范大学软件学院、石家庄司法警官学院网络技术部布署应用并取得良好的效果。<br />' + 
+							'“虚拟数字学院系统”还曾在教育部组织的第二届全国软件创新大赛中获得优胜奖。<br />' + 
+						'</p>' +
+						'<p>' +
+							'工作：<br />' +
+							'Cute Net 平台，设计和开发（1人）；<br />' +
+							'虚拟数字学院系统，开发（3人）；<br />' +
+							'统一网络接入管理系统，平台和设备配置（2人）。<br />' +
+						'</p>'
+				},{
+					duration : '2008-9 至 2011-2',
+					name : '本科在校期间其它项目',
+					project_role : '',
+					intro : '智慧交通平台（2人）[第三届全国软件创新大赛优胜奖]；<br />' + 
+						'河北省计划生育委员会数据系统（3人）；<br />' +
+						'河北师范大学学生处CMS（2人）。'
+				}],
+
+				SKILLS : '技能',
+				skills : [{
+					name: 'C/C++：',
+					intro: '精通原理和细节，熟练使用。'
+				},{
+					name: 'WINDOWS应用开发：',
+					intro: '精通原理和细节，熟练使用。'
+				},{
+					name : 'WEB前端（JAVASCRIPT，CSS，HTML）：',
+					intro: '熟练使用，对原理和细节有较多了解。'
+				},{
+					name : 'WEB后端（PHP，MYSQL）：',
+					intro: '熟练使用，对原理和细节有较多了解。'
+				},{
+					name : 'Android：',
+					intro: '熟练使用，对原理和细节有一些了解，正在进一步深入学习。'
+				},{
+					name : '计算机网络：',
+					intro: '获得CCNA认证。'
+				},{
+					name : '英语：',
+					intro: 'CET-6，可以熟练阅读和书写英文文档。'
+				}],
+
+				HONORS : '获奖情况',
+				DURING_BS : '本科期间',
+				DURING_MS : '研究生期间',
+				honor_bs : '河北省优秀毕业生，保送北京邮电大学公费攻读工学硕士学位。<br />' +
+					'校一等奖学金两次，校三好两次。<br />' +
+					'2009 第二届全国软件创新大赛 优胜奖<br />' +
+					'2010 第三届全国软件创新大赛 优胜奖<br />',
+				honor_ms : '校二等奖学金一次，校三等奖学金一次。'
+			};
+
+			var language_en = {
+				name : 'Patrick Trol',
+				TEL : 'TEL: ',
+				EMAIL : 'EMAIL: ',
+				tel_number : '(+86)13161073143',
+				email_address : 'milestone.jxd@gmail.com',
+				INTRO : 'Introduction',
+				intro : 'I love computer technology and software technology deeply and I long to learn and be innovative. What I need is not a job, but a platform where creative labor can be highly valued and accepted as the labor for usiness requirements do; where creative technological achievements can be applied to improve the life quality of the developers.',
+				
+				EDUCATION : 'Education Background',
+				education : [{
+					duration : '2012-9 to 2015-6',
+					major : 'Computer Science and Technology',
+					school : 'Beijing University of Posts and Telecommunications',
+					degree : 'Master Degree',
+					intro : 'My main scientific research is GUI system. I develop and maintain several open source projects, such as XUILib (Direct UI frame, http://xuilib.net), which has 2000+(79% China) downloads.'
+				},{
+					duration : '2008-9 to 2012-6',
+					major : 'Software Engineering',
+					school : 'Hebei Normal University',
+					degree : 'Bachelor Degree',
+					intro : 'My grades of specialized courses rank top 1%, and I get recommended for admission to Beijing University of Posts and Telecommunications to study for Master of Engineering at public expense; I am responsible for the research and development of several projects, among which Cute Net platform and Hitpoint system (https://who.edu2act.org) become one of the mostly used platforms and applications in the college.'
+				}],
+
+				INTERNSHIP : 'Internship',
+				internship : [{
+					duration : '2011-3 to 2012-4',
+					position : 'R&D Engineer',
+					company : 'Beijing Qihoo 360 Technology Co.,Ltd',
+					intro : 'I participated in the research and development of several network client-side projects, such as 360 Software Manager, 360 Security Desktop. More details will be seen from the following project experiences.'
+				}],
+
+				PROJECTS : 'Project Experiences',
+				projects : [{
+					duration : '2012-9 to now',
+					name : 'Open Source Project XUI',
+					project_role : 'OWNER',
+					intro : 'Direct UI Framework. It has 2000+(79% China) downloads; <a href="http://xuilib.net">http://xuilib.net</a>'
+				},
+				{
+					duration : '2014-1 to now',
+					name : 'Open Source Project WDUI',
+					project_role : 'OWNER',
+					intro : 'Direct UI Frame based on HTML5 Canvas; <a href="http://jxdabc.github.io/WDUI/test.html">http://jxdabc.github.io/WDUI/test.html</a>'
+				},{
+					duration : '2014-1 to now',
+					name : 'Open Source Project class.js',
+					project_role : 'OWNER',
+					intro : 'Javascript OOP library; <a href="http://classjs.org">http://classjs.org</a>'
+				},{
+					duration : '2012-8 to 2014-9 ',
+					name : 'Other projects during the postgraduate time',
+					project_role : '',
+					intro : 'A web MVC framework(<a href="https://github.com/jxdabc/XFramework">https://github.com/jxdabc/XFramework</a>， for my own projects)；<br />' +
+						'An Android UI control library, A web RPC framework(for the lab.)；<br />' + 
+						'A web skin framework(<a href="https://github.com/jxdabc/XUIWeb">https://github.com/jxdabc/XUIWeb</a>，for the lab.)；<br />' +
+						'A CSS3 toy(<a href="http://jxdabc.github.io/css3/album/">http://jxdabc.github.io/css3/album/</a>，for my girl friend).'
+				},{
+					duration : '2011-10 to 2012-4',
+					name : '360 Software Manager',
+					project_role : 'R&D Engineer',
+					intro : 'App store module (one person);<br /> Software assistant (two person force). '
+				},{
+					duration : '2011-11 to 2011-12',
+					name : '360 Cellphone Assistant',
+					project_role : 'R&D Engineer',
+					intro : 'Photos and e-book reading module UI (one person). '
+				},{
+					duration : '2008-10 to 2011-3',
+					name : '360 Security Desktop',
+					project_role : 'R&D Engineer',
+					intro : 'Web App module, maintenance and development of new functions (one person); <br />' + 
+						'Networked data (two persons).'
+				},{
+					duration : '2012-9 to now',
+					name : 'Cute Net platform and several applications based on this platform',
+					project_role : 'OWNER',
+					intro : 
+						'<p>' +  
+							'Introduction: <br />' +
+							'<i>Cute Net Platform</i> obtains information from non-terminating network equipment within management in real time. And it integrates corporate users’ information database (only aimed for Microsoft Active Directory for now) to provide real time network and users’ information for the corporate inner applications. <br />' + 
+						'</p>' + 
+						'<p>' +  
+							'The applications based on this platform are as follows: <br />' + 
+							'-The virtual digital college system (providing such functions as locating online users, finding out vacant seats in study lounges, checking class attendance, seeing the live broadcast teaching, reviewing the teaching plan, parents checking children’s network record at school, parents leaving massages via emails, information checking via SMS, etc.) <br />' + 
+							'-Unified network access management system (authentication and authorization of network access based on MAC) <br />' +
+							'-SSO system (access to all corporate inner applications, including email, office system, by one log-on) <br />' +
+							'-Educational management system <br />' +
+						'</p>' +
+						'<p>' +  
+							'Among them, the <i>education management system</i>, the <i>virtual digital college system</i> and the <i>unified network access management system</i> have been applied and gained good effects in Software College of Hebei Normal University and the Network Technology Department of Shijiazhuang College For Correctional Police. <br />' + 
+							'The <i>virtual digital college system</i> has won outstanding prize in the second National Software Innovation Contest organized by Ministry of Education. <br />' + 
+						'</p>' +
+						'<p>' +
+							'Work：<br />' +
+							'Cute Net platform, design and development (one person); <br />' +
+							'The development of the virtual digital college system (three persons); <br />' +
+							'Unified network access management system, platform and device configuration (two persons). <br />' +
+						'</p>'
+				},{
+					duration : '2008-9 to 2011-2',
+					name : 'Other projects during undergraduate time',
+					project_role : '',
+					intro : 'Intelligent transportation platform (two persons) [It won Outstanding Prize in the third National Software Innovation Contest.]; <br />' + 
+						'Data system of Hebei Province Family Planning Committee (three persons); <br />' +
+						'Data system of Hebei Province Family Planning Committee (three persons). '
+				}],
+
+				SKILLS : '技能',
+				skills : [{
+					name: 'C/C++: ',
+					intro: 'I have a full command of theories, details and good at using them. '
+				},{
+					name: 'WINDOWS application development: ',
+					intro: 'I have a full command of theories, details and good at using them.'
+				},{
+					name : 'Web front-end(JAVASCRIPT, CSS, HTML): ',
+					intro: 'I have a good command of theories, details and good at using them.'
+				},{
+					name : 'Web back-end(PHP, MYSQL): ',
+					intro: 'I have a good command of theories, details and good at using them.'
+				},{
+					name : 'Android: ',
+					intro: 'I have some command of theories, details and good at using them. I am on my way to study deeper.'
+				},{
+					name : 'Computer network: ',
+					intro: 'I have obtained CCNA authentication.'
+				},{
+					name : 'English: ',
+					intro: 'CET-6. I am able to read and write English documents.'
+				}],
+
+				HONORS : 'Awards: ',
+				DURING_BS : 'During my undergraduate time: ',
+				DURING_MS : 'During my postgraduate time: ',
+				honor_bs : 'I got Outstanding Graduates in Hebei and got recommended for admission to Beijing University of Posts and Telecommunications to study for Master of Engineering at public expense. <br />' +
+					'I won the first-class scholarship twice and the School Roll Student twice. <br />' +
+					'I won the first-class scholarship twice and the School Roll Student twice. <br />' +
+					'I won Outstanding Prize in the third National Software Innovation Contest in 2010. <br />',
+				honor_ms : 'I won the second-class scholarship once and the third-class scholarship once. '
+
+			};
+
+			var VM = XBind.getVM('resume');
+			VM.applyChinese = function() {
+				applyLanguage(language_cn);
+			}
+			VM.applyEnglish = function() {
+				applyLanguage(language_en);
+			}
+
+			applyLanguage(language_cn);
+
+			function applyLanguage(dict) {
+				for (key in dict) {
+					var v = dict[key];
+					if (typeof v == 'object') VM[key].clear(),VM[key].apply(v);
+					else VM[key] = dict[key];
+				}
+			}
+		
+
+
+
+			window.onscroll = function() {
+				console.log(document.body.scrollTop);
+			}
+
+			function getPos(elem) {
+				
+			}
+
+
+		}
+
+
+	</script>
+
+</html>
