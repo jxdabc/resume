@@ -639,7 +639,7 @@
 				applyLanguage(language_en);
 			}
 
-			applyLanguage(language_cn);
+			applyLanguage(language_en);
 
 			function applyLanguage(dict) {
 				for (key in dict) {
@@ -647,17 +647,6 @@
 					if (typeof v == 'object') VM[key].clear(),VM[key].apply(v);
 					else VM[key] = dict[key];
 				}
-			}
-		
-
-
-
-			window.onscroll = function() {
-				console.log(document.body.scrollTop);
-			}
-
-			function getPos(elem) {
-				
 			}
 
 
